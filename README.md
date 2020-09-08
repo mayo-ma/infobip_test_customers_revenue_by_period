@@ -1,0 +1,2 @@
+# infobip_test_customers_revenue_by_period
+InfoBip test solution for CUSTOMERS_REVENUE_BY_PERIOD pipeline
