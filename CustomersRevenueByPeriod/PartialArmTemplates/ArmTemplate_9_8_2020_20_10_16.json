@@ -1,0 +1,189 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory name",
+			"defaultValue": "CustomersRevenueByPeriod"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/Copy Customers Revenue By Period')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Copy_qni",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": "BEGIN\n\tDECLARE @currentDate AS DATE;\n\tDECLARE @currentYear AS INT;\n\tDECLARE @currentMonth AS INT;\n\tDECLARE @currentQuarter AS INT;\n\tDECLARE @previousYear AS INT;\n\tDECLARE @previousMonth AS INT;\n\tDECLARE @previousMonthYear AS INT;\n\tDECLARE @previousQuarter AS INT;\n\tDECLARE @previousQuarterYear AS INT;\n\tSET @currentDate = CAST(GETDATE() AS DATE);\n\n\tSET @currentYear = DATEPART(yyyy, @currentDate);\n\tSET @currentMonth = DATEPART(M, @currentDate);\n\n\tSELECT \n\t\t@currentQuarter = year_quarter,\n\t\t@currentMonth = month_number,\n\t\t@currentYear = year\n\tFROM dbo.dim_calendar\n\tWHERE date_value = @currentDate;\n\n\t--print @currentQuarter\n\t--print @currentMonth\n\t--print @currentYear\n\n\tSELECT TOP 1 \n\t\t@previousQuarter = year_quarter,\n\t\t@previousQuarterYear = year\n\tFROM dbo.dim_calendar\n\tWHERE\n\t\t(year < @currentYear AND year_quarter > @currentQuarter)\n\t\tOR (year = @currentYear AND year_quarter < @currentQuarter)\n\tORDER BY year DESC, year_quarter DESC;\n\n\tSELECT TOP 1 \n\t\t@previousMonth = month_number,\n\t\t@previousMonthYear = year\n\tFROM dbo.dim_calendar\n\tWHERE\n\t\t(year < @currentYear AND month_number > @currentMonth)\n\t\tOR (year = @currentYear AND month_number < @currentMonth)\n\tORDER BY year DESC,month_number DESC;\n\n\tWITH agg AS\n\t(\n\t\tSELECT \n\t\t\tcustomer_id,\n\t\t\tcustomer_sk,\n\t\t\tSUM(gross_revenue_amt) gross_revenue_amt,\n\t\t\tcal.month_number,\n\t\t\tcal.year,\n\t\t\tcal.year_quarter\n\t\tFROM dbo.fact_traffic_daily trf WITH(NOLOCK)\n\t\tJOIN dbo.dim_calendar cal WITH(NOLOCK)\n\t\t\tON trf.traffic_date = cal.date_value\n\t\tGROUP BY \n\t\t\tcustomer_id,\n\t\t\tcustomer_sk,\n\t\t\tcal.month_number,\n\t\t\tcal.year,\n\t\t\tcal.year_quarter\n\t),\n\tagg2 AS\n\t(\n\t\tSELECT \n\t\t\tcustomer_id,\n\t\t\tcustomer_sk,\n\t\t\tSUM(CASE \n\t\t\t\tWHEN (year = @previousMonthYear AND month_number = @previousMonth) THEN gross_revenue_amt\n\t\t\t\tELSE 0\n\t\t\tEND) AS previous_month_revenue,\n\t\t\tSUM(CASE \n\t\t\t\tWHEN (year = @previousMonthYear AND year_quarter = @previousQuarter) THEN gross_revenue_amt\n\t\t\t\tELSE 0\n\t\t\tEND) AS previous_quarter_revenue,\n\t\t\tSUM(CASE \n\t\t\t\tWHEN (year = @currentYear AND month_number = @currentMonth) THEN gross_revenue_amt\n\t\t\t\tELSE 0\n\t\t\tEND) AS mtd_revenue,\n\t\t\tSUM(CASE \n\t\t\t\tWHEN (year = @currentYear AND year_quarter = @currentQuarter) THEN gross_revenue_amt\n\t\t\t\tELSE 0\n\t\t\tEND) AS qtd_revenue,\n\t\t\tSUM(CASE \n\t\t\t\tWHEN (year = @currentYear) THEN gross_revenue_amt\n\t\t\t\tELSE 0\n\t\t\tEND) AS ytd_revenue\n\t\tFROM agg\n\t\tGROUP BY \n\t\t\tcustomer_id,\n\t\t\tcustomer_sk\n\t)\n\tSELECT \n\t\t@currentDate AS data_date,\n\t\t\tcustomer_id,\n\t\t\tcustomer_sk,\n\t\tprevious_month_revenue AS REVENUE_LAST_MONTH,\n\t\tprevious_quarter_revenue AS REVENUE_LAST_QUARTER,\n\t\tmtd_revenue AS REVENUE_MTD,\n\t\tytd_revenue AS REVENUE_YTD,\n\t\tqtd_revenue,\n\t\t((qtd_revenue/previous_quarter_revenue)*100) - 100 AS REVENUE_INCREASE_PCT_QnQ\n\tFROM agg2\nEND",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"tableOption": "autoCreate"
+							},
+							"enableStaging": false,
+							"validateDataConsistency": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "data_date",
+											"type": "DateTime",
+											"physicalType": "date"
+										},
+										"sink": {
+											"name": "DATADATE",
+											"type": "DateTime",
+											"physicalType": "date"
+										}
+									},
+									{
+										"source": {
+											"name": "customer_id",
+											"type": "Int32",
+											"physicalType": "int"
+										},
+										"sink": {
+											"name": "CUSTOMER_ID"
+										}
+									},
+									{
+										"source": {
+											"name": "customer_sk",
+											"type": "Int64",
+											"physicalType": "bigint"
+										},
+										"sink": {
+											"name": "CUSTOMER_SK"
+										}
+									},
+									{
+										"source": {
+											"name": "REVENUE_LAST_MONTH",
+											"type": "Decimal",
+											"physicalType": "decimal"
+										},
+										"sink": {
+											"name": "REVENUE_LAST_MONTH",
+											"type": "Decimal",
+											"physicalType": "decimal"
+										}
+									},
+									{
+										"source": {
+											"name": "REVENUE_LAST_QUARTER",
+											"type": "Decimal",
+											"physicalType": "decimal"
+										},
+										"sink": {
+											"name": "REVENUE_LAST_QUARTER",
+											"type": "Decimal",
+											"physicalType": "decimal"
+										}
+									},
+									{
+										"source": {
+											"name": "REVENUE_MTD",
+											"type": "Decimal",
+											"physicalType": "decimal"
+										},
+										"sink": {
+											"name": "REVENUE_MTD",
+											"type": "Decimal",
+											"physicalType": "decimal"
+										}
+									},
+									{
+										"source": {
+											"name": "REVENUE_YTD",
+											"type": "Decimal",
+											"physicalType": "decimal"
+										},
+										"sink": {
+											"name": "REVENUE_YTD",
+											"type": "Decimal",
+											"physicalType": "decimal"
+										}
+									},
+									{
+										"source": {
+											"name": "REVENUE_INCREASE_PCT_QnQ",
+											"type": "Decimal",
+											"physicalType": "decimal"
+										},
+										"sink": {
+											"name": "REVENUE_INCREASE_PCT_QnQ",
+											"type": "Decimal",
+											"physicalType": "decimal"
+										}
+									}
+								],
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "SourceDataset_qni",
+								"type": "DatasetReference"
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "DestinationDataset_qni",
+								"type": "DatasetReference"
+							}
+						]
+					}
+				],
+				"annotations": [],
+				"lastPublishTime": "2020-09-08T17:47:30Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/DestinationDataset_qni')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DestinationDataset_qni')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "ls_adb_infobip_test",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "CUSTOMERS_REVENUE_BY_PERIOD"
+				}
+			},
+			"dependsOn": []
+		}
+	]
+}
