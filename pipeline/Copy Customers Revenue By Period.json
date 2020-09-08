@@ -13,16 +13,7 @@
 					"secureOutput": false,
 					"secureInput": false
 				},
-				"userProperties": [
-					{
-						"name": "Source",
-						"value": "."
-					},
-					{
-						"name": "Destination",
-						"value": "dbo.CUSTOMERS_REVENUE_BY_PERIOD<Custom query>"
-					}
-				],
+				"userProperties": [],
 				"typeProperties": {
 					"source": {
 						"type": "AzureSqlSource",
@@ -89,17 +80,6 @@
 								},
 								"sink": {
 									"name": "REVENUE_YTD",
-									"type": "Decimal"
-								}
-							},
-							{
-								"source": {
-									"name": "qtd_revenue",
-									"type": "Decimal",
-									"physicalType": "decimal"
-								},
-								"sink": {
-									"name": "qtd_revenue",
 									"type": "Decimal"
 								}
 							},
