@@ -1,0 +1,17 @@
+{
+	"name": "DestinationDataset_qni",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "ls_adb_infobip_test",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "CUSTOMERS_REVENUE_BY_PERIOD<Custom query>"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

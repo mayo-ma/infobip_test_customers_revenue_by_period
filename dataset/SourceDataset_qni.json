@@ -1,0 +1,54 @@
+{
+	"name": "SourceDataset_qni",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "ls_adb_infobip_test",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "data_date",
+				"type": "date"
+			},
+			{
+				"name": "REVENUE_LAST_MONTH",
+				"type": "decimal",
+				"precision": 38,
+				"scale": 4
+			},
+			{
+				"name": "REVENUE_LAST_QUARTER",
+				"type": "decimal",
+				"precision": 38,
+				"scale": 4
+			},
+			{
+				"name": "REVENUE_MTD",
+				"type": "decimal",
+				"precision": 38,
+				"scale": 4
+			},
+			{
+				"name": "REVENUE_YTD",
+				"type": "decimal",
+				"precision": 38,
+				"scale": 4
+			},
+			{
+				"name": "qtd_revenue",
+				"type": "decimal",
+				"precision": 38,
+				"scale": 4
+			},
+			{
+				"name": "REVENUE_INCREASE_PCT_QnQ",
+				"type": "decimal",
+				"precision": 38,
+				"scale": 6
+			}
+		]
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}
